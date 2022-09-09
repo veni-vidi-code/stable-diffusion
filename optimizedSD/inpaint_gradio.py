@@ -224,7 +224,7 @@ def generate(
                         target_path = os.path.join(sample_path, "seed_" + str(seed) + "_" +
                                                    f"{base_count:05}.{img_format}")
                         info, exif = create_exif_info(img, seed, prompt, ddim_steps, sampler, scale,
-                                                      full_precision, batch_size, i, "text2img_gradio.py")
+                                                      full_precision, batch_size, i, "inpaint_gradio.py")
                         img.save(target_path, pnginfo=info, exif=exif)
                         seeds += str(seed) + ","
                         seed += 1
