@@ -19,7 +19,7 @@ from tqdm import tqdm, trange
 from transformers import logging
 
 from ldm.util import instantiate_from_config
-from optimUtils import split_weighted_subprompts, logger
+from optimUtils import split_weighted_subprompts, logger, create_exif_info
 
 logging.set_verbosity_error()
 import mimetypes
@@ -220,9 +220,12 @@ def generate(
                         x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
                         all_samples.append(x_sample.to("cpu"))
                         x_sample = 255.0 * rearrange(x_sample[0].cpu().numpy(), "c h w -> h w c")
-                        Image.fromarray(x_sample.astype(np.uint8)).save(
-                            os.path.join(sample_path, "seed_" + str(seed) + "_" + f"{base_count:05}.{img_format}")
-                        )
+                        img = Image.fromarray(x_sample.astype(np.uint8))
+                        target_path = os.path.join(sample_path, "seed_" + str(seed) + "_" +
+                                                   f"{base_count:05}.{img_format}")
+                        info, exif = create_exif_info(img, seed, prompt, ddim_steps, sampler, scale,
+                                                      full_precision, batch_size, i, "text2img_gradio.py")
+                        img.save(target_path, pnginfo=info, exif=exif)
                         seeds += str(seed) + ","
                         seed += 1
                         base_count += 1

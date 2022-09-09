@@ -14,7 +14,7 @@ from torch import autocast
 from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from ldm.util import instantiate_from_config
-from optimUtils import split_weighted_subprompts, logger
+from optimUtils import split_weighted_subprompts, logger, create_exif_info
 from transformers import logging
 import pandas as pd
 logging.set_verbosity_error()
@@ -243,7 +243,8 @@ if not opt.from_file:
 else:
     print(f"reading prompts from {opt.from_file}")
     with open(opt.from_file, "r") as f:
-        data = f.read().splitlines()
+        prompt = f.read()
+        data = prompt.splitlines()
         data = batch_size * list(data)
         data = list(chunk(sorted(data), batch_size))
 
@@ -332,8 +333,12 @@ with torch.no_grad():
                     x_samples_ddim = modelFS.decode_first_stage(samples_ddim[i].unsqueeze(0))
                     x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
                     x_sample = 255.0 * rearrange(x_sample[0].cpu().numpy(), "c h w -> h w c")
-                    Image.fromarray(x_sample.astype(np.uint8)).save(
-                        os.path.join(sample_path, "seed_" + str(opt.seed) + "_" + f"{base_count:05}.{opt.format}")
+                    img = Image.fromarray(x_sample.astype(np.uint8))
+                    info, exif = create_exif_info(img, opt.seed, prompt, opt.ddim_steps, opt.sampler, opt.scale,
+                                                  opt.precision, batch_size, i, "optimized_img2img.py")
+                    img.save(
+                        os.path.join(sample_path, "seed_" + str(opt.seed) + "_" + f"{base_count:05}.{opt.format}"),
+                        pnginfo=info
                     )
                     seeds += str(opt.seed) + ","
                     opt.seed += 1

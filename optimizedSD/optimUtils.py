@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 
 
 def split_weighted_subprompts(text):
@@ -51,7 +53,7 @@ def logger(params, log_csv):
     os.makedirs('logs', exist_ok=True)
     cols = [arg for arg, _ in params.items()]
     if not os.path.exists(log_csv):
-        df = pd.DataFrame(columns=cols) 
+        df = pd.DataFrame(columns=cols)
         df.to_csv(log_csv, index=False)
 
     df = pd.read_csv(log_csv)
@@ -71,3 +73,28 @@ def logger(params, log_csv):
 
     df = pd.DataFrame(li,index = [0])
     df.to_csv(log_csv,index=False, mode='a', header=False)
+
+
+def create_exif_info(img, seed, prompt, ddim_steps, sampler, scale, full_precision, batch_size,
+                     batch_index, scriptname):
+    info = PngInfo()
+    info.add_itxt("Software", f"Stable Diffusion (github.com/basujindal/stable-diffusion), "
+                              f"{scriptname}", zip=True)
+    info.add_itxt("Seed", str(seed))
+    info.add_itxt("Prompt", prompt, zip=True)
+    info.add_itxt("ddim_steps", str(ddim_steps))
+    info.add_itxt("sampler", str(sampler))
+    info.add_itxt("Scale", str(scale))
+    info.add_itxt("FullPrecision", str(full_precision))
+    info.add_itxt("Batch Size", str(batch_size))
+    info.add_itxt("Batch Index", str(batch_index))
+    exif = img.getexif()
+    exif[0xA401] = 1  # Yes, this has had special processing on it
+    exif[0xA40B] = f"Seed: {seed}, ddim_steps: {ddim_steps}, sampler: {sampler}, scale: {scale}, " \
+                   f"precision: {str(full_precision)}, batchsize: {batch_size}, batchindex: {batch_index}, " \
+                   f"prompt: {prompt}"
+    exif[0x927C] = exif[0xA40B]
+    exif[0x9286] = exif[0xA40B]
+    exif[0x010E] = prompt
+    exif[0x0131] = f"Stable Diffusion (github.com/basujindal/stable-diffusion) {scriptname}"
+    return info, exif
